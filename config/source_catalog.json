@@ -1,0 +1,303 @@
+[
+  {
+    "category": "Major portals",
+    "name": "XING",
+    "website": "https://www.xing.com/jobs",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "StepStone",
+    "website": "https://www.stepstone.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Indeed Deutschland",
+    "website": "https://de.indeed.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Bundesagentur fuer Arbeit",
+    "website": "https://www.arbeitsagentur.de/jobsuche/",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "LinkedIn Jobs",
+    "website": "https://www.linkedin.com/jobs/",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "meinestadt.de",
+    "website": "https://jobs.meinestadt.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "stellenanzeigen.de",
+    "website": "https://www.stellenanzeigen.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Jobware",
+    "website": "https://www.jobware.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Kimeta",
+    "website": "https://www.kimeta.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Arbeitnow",
+    "website": "https://www.arbeitnow.com",
+    "preferred_collection": "public_api",
+    "integration_status": "implemented"
+  },
+  {
+    "category": "Major portals",
+    "name": "EURES",
+    "website": "https://eures.europa.eu",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Major portals",
+    "name": "Make it in Germany",
+    "website": "https://www.make-it-in-germany.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Engineering portals",
+    "name": "get in Engineering",
+    "website": "https://www.get-in-engineering.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Engineering portals",
+    "name": "ingenieur.de",
+    "website": "https://www.ingenieur.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Engineering portals",
+    "name": "academics.de",
+    "website": "https://www.academics.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Randstad",
+    "website": "https://www.randstad.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Adecco",
+    "website": "https://www.adecco.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Manpower",
+    "website": "https://www.manpower.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Hays",
+    "website": "https://www.hays.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "FERCHAU",
+    "website": "https://www.ferchau.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Brunel",
+    "website": "https://www.brunel.net",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "DIS AG",
+    "website": "https://www.dis-ag.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "DEKRA Arbeit",
+    "website": "https://www.dekra-arbeit.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "TIMEPARTNER",
+    "website": "https://www.timepartner.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Tempton",
+    "website": "https://www.tempton.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Orizon",
+    "website": "https://www.orizon.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "persona service",
+    "website": "https://www.persona.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "I.K. Hofmann",
+    "website": "https://www.hofmann.info",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Piening",
+    "website": "https://www.piening-personal.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Gi Group",
+    "website": "https://de.gigroup.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Job&Talent",
+    "website": "https://www.jobandtalent.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Recruitment agencies",
+    "name": "Robert Half",
+    "website": "https://www.roberthalf.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "HOCHTIEF",
+    "website": "https://www.hochtief.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "STRABAG",
+    "website": "https://www.strabag.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "ZÜBLIN",
+    "website": "https://www.zueblin.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "VINCI",
+    "website": "https://www.vinci.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "Arcadis",
+    "website": "https://www.arcadis.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "AECOM",
+    "website": "https://aecom.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "Jacobs",
+    "website": "https://www.jacobs.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "WSP",
+    "website": "https://www.wsp.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "Ramboll",
+    "website": "https://www.ramboll.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "Bilfinger",
+    "website": "https://www.bilfinger.com",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  },
+  {
+    "category": "Construction employers",
+    "name": "GOLDBECK",
+    "website": "https://www.goldbeck.de",
+    "preferred_collection": "api_feed_or_alerts_research",
+    "integration_status": "not_integrated"
+  }
+]
