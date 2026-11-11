@@ -74,8 +74,9 @@
     "category": "Major portals",
     "name": "EURES",
     "website": "https://eures.europa.eu",
-    "preferred_collection": "api_feed_or_alerts_research",
-    "integration_status": "not_integrated"
+    "preferred_collection": "community_documented_public_portal",
+    "integration_status": "live_verified_2026-11-11",
+    "note": "36 German vacancies returned in 2026-11-11 live test; job location is Germany-level and must be verified"
   },
   {
     "category": "Major portals",
