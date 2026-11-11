@@ -15,6 +15,7 @@ import re
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from zoneinfo import ZoneInfo
 import requests
+import xml.etree.ElementTree as ET
 
 SHEET_ID = '1JUKnCUmshWZpKV8-VOebJ-KNScMu9R45pf0j_crsD4w'
 HEADERS = ['id','company','role','track','location','job_url','language','fit','status','discovered_at','applied_at','follow_up_at','interview_at','deadline','source','recruiter','cv_file','cover_letter_file','notes','updated_at']
@@ -139,6 +140,77 @@ def collect_smartrecruiters(session, companies):
             if offset+len(payload.get('content',[])) >= payload.get('totalFound',0): break
 
 
+
+def collect_ashby(session, boards):
+    """Public Ashby board API; a verified organization slug is required."""
+    for b in boards:
+        token=b.get('board','')
+        if not re.fullmatch(r'[A-Za-z0-9_-]+',token):
+            LOG.warning('Skipping invalid Ashby board'); continue
+        r=session.get(f'https://api.ashbyhq.com/posting-api/job-board/{token}',timeout=20)
+        r.raise_for_status()
+        for x in r.json().get('jobs',[]):
+            if x.get('isListed') is False: continue
+            yield normalize({'company':b.get('company',token),'role':x.get('title'),
+                'location':x.get('location'),'job_url':x.get('jobUrl') or x.get('applyUrl'),
+                'description':x.get('descriptionPlain') or x.get('descriptionHtml'),'source':f'Ashby: {token}'})
+
+
+def collect_recruitee(session, boards):
+    """Public Recruitee offers API; verified tenant slugs only."""
+    for b in boards:
+        token=b.get('site','')
+        if not re.fullmatch(r'[A-Za-z0-9_-]+',token):
+            LOG.warning('Skipping invalid Recruitee site'); continue
+        r=session.get(f'https://{token}.recruitee.com/api/offers/',timeout=20)
+        r.raise_for_status()
+        for x in r.json().get('offers',[]):
+            locations=x.get('locations') or []
+            loc=x.get('city') or x.get('location') or ''
+            if not loc and locations:
+                loc=', '.join(z.get('city','') for z in locations if isinstance(z,dict))
+            yield normalize({'company':b.get('company',token),'role':x.get('title'),
+                'location':loc,'job_url':x.get('careers_url') or x.get('url'),
+                'description':(x.get('description') or '')+' '+(x.get('requirements') or ''),
+                'source':f'Recruitee: {token}'})
+
+
+def collect_workable(session, boards):
+    """Public Workable widget for configured employers."""
+    for b in boards:
+        token=b.get('account','')
+        if not re.fullmatch(r'[A-Za-z0-9_-]+',token):
+            LOG.warning('Skipping invalid Workable account'); continue
+        r=session.get(f'https://apply.workable.com/api/v1/widget/accounts/{token}',
+                      params={'details':'true'},timeout=20)
+        r.raise_for_status()
+        for x in r.json().get('jobs',[]):
+            loc=x.get('location') or {}
+            location=', '.join(str(loc.get(k,'')) for k in ('city','country') if loc.get(k)) if isinstance(loc,dict) else str(loc)
+            yield normalize({'company':b.get('company',token),'role':x.get('title'),
+                'location':location,'job_url':x.get('url') or x.get('shortlink'),
+                'description':x.get('description') or '', 'source':f'Workable: {token}'})
+
+
+def collect_personio(session, boards):
+    """Public Personio XML listing; company tenant slugs must be verified."""
+    for b in boards:
+        token=b.get('tenant','')
+        if not re.fullmatch(r'[A-Za-z0-9_-]+',token):
+            LOG.warning('Skipping invalid Personio tenant'); continue
+        domain=b.get('domain','de')
+        if domain not in ('de','com'): domain='de'
+        r=session.get(f'https://{token}.jobs.personio.{domain}/xml',timeout=20)
+        r.raise_for_status()
+        for x in ET.fromstring(r.content).findall('.//position'):
+            val=lambda k: ''.join(x.findtext(k) or '').strip()
+            desc=' '.join((d.text or '') for d in x.findall('.//jobDescription'))
+            link=val('url') or f'https://{token}.jobs.personio.{domain}/job/{val("id")}'
+            yield normalize({'company':b.get('company',token),'role':val('name'),
+                'location':', '.join(k for k in (val('office'),val('city'),val('country')) if k),
+                'job_url':link,'description':desc,'source':f'Personio: {token}'})
+
+
 def dedup_key(item):
     url=canonical_url(item.get('job_url',''))
     if url: return 'u:'+url.casefold()
@@ -184,6 +256,12 @@ def read_role_profiles(client, sheet_id):
     return parse_role_rows(response.json().get('values', []))
 
 
+# A generic "Project Engineer" title is not sufficient evidence of a civil role.
+GENERAL_ENGINEER = re.compile(r'^(?:junior\s+)?(?:projekt(?:ingenieur|engineer)|project engineer|engineering project manager)', re.I)
+CONSTRUCTION_CONTEXT = re.compile(r'bau\b|construction|civil|infrastructure|hochbau|tiefbau|wohnungsbau|baustell|building|structural|water engineering|wasserbau|brücken|bridge',re.I)
+NON_CIVIL_DOMAINS = re.compile(r'medizintechnik|medical device|clinical|pharma|elektrotechnik|electrical|software|embedded|automotive|maschinenbau|mechanical engineering|automation engineer',re.I)
+
+
 def profile_match(job, profiles):
     title = clean(job.get('role', '')).casefold()
     location = job.get('location', '')
@@ -192,6 +270,11 @@ def profile_match(job, profiles):
     if re.search(r'\b(director|vice president|\bvp\b|chief executive|head of)\b', title, re.I): return None
     for p in profiles:
         if p['enabled'] and any(term in title for term in p['terms']):
+            if p['track']=='Civil engineering':
+                broad = GENERAL_ENGINEER.search(title)
+                if broad and (NON_CIVIL_DOMAINS.search(title) or not CONSTRUCTION_CONTEXT.search(title+' '+job.get('description',''))):
+                    continue
+
             score = 48 + (12 if JUNIOR.search(title) else 0) + (8 if 'berlin' in location.lower() else 0)
             score += (4 if re.search(r'planung|koordination|project|projekt|teamlead|teamleiter|schichtleiter', title, re.I) else 0)
             _base = track_and_score(job)
@@ -271,11 +354,18 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
         collectors.append(('Lever',lambda:collect_lever(session,cfg.get('lever',[]))))
     if cfg.get('smartrecruiters'):
         collectors.append(('SmartRecruiters',lambda:collect_smartrecruiters(session,cfg.get('smartrecruiters',[]))))
+    for key,func,label in [('ashby',collect_ashby,'Ashby'),
+                           ('recruitee',collect_recruitee,'Recruitee'),
+                           ('workable',collect_workable,'Workable'),
+                           ('personio',collect_personio,'Personio')]:
+        if cfg.get(key):
+            collectors.append((label,lambda fn=func,k=key:fn(session,cfg.get(k,[]))))
+    source_results=[]
     for label,collector in collectors:
         try:
-            batch=list(collector());candidates.extend(batch);LOG.info('%s: fetched %s',label,len(batch))
+            batch=list(collector());candidates.extend(batch);LOG.info('%s: fetched %s',label,len(batch));source_results.append((label,len(batch),'ok'))
         except (requests.RequestException,ValueError,KeyError) as e:
-            LOG.error('%s source failed: %s',label,e)
+            LOG.error('%s source failed: %s',label,e);source_results.append((label,0,'error: '+str(e)[:160]))
     if not candidates: LOG.warning('No source results; leaving Sheets unchanged')
     if dry_run:
         profile_data = json.loads(Path('config/role_profiles.json').read_text(encoding='utf-8'))
@@ -290,7 +380,7 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
     urls,triples,_=read_existing(client,sheet_id)
     selected=filter_jobs(candidates,urls,triples,profiles=profiles)[:limit]
     count=append_jobs(client,sheet_id,selected)
-    print(json.dumps({'source_records':len(candidates),'new_saved':count,'job_titles':[x['role'] for x in selected]},ensure_ascii=False))
+    print(json.dumps({'source_records':len(candidates),'new_saved':count,'sources':[{'name':n,'records':q,'status':st} for n,q,st in source_results], 'job_titles':[x['role'] for x in selected]},ensure_ascii=False))
     return selected
 
 
