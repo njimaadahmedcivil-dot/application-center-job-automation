@@ -1,0 +1,42 @@
+[
+  {
+    "profile_id": "civil-junior",
+    "enabled": "TRUE",
+    "display_name": "Junior civil engineering",
+    "track": "Civil engineering",
+    "title_terms": "junior bauingenieur;bauleiter;bauüberwachung;nachwuchsingenieur;junior site engineer;site engineer;project engineer;projektingenieur;arbeitsvorbereitung;construction coordinator",
+    "notes": "Primary search track"
+  },
+  {
+    "profile_id": "logistics-teamlead",
+    "enabled": "TRUE",
+    "display_name": "Logistics Team Lead",
+    "track": "Logistics & supply chain",
+    "title_terms": "teamleiter logistik;teamleitung logistik;logistics team lead;logistics team leader;schichtleiter logistik;warehouse team leader;teamleiter lager;operations supervisor",
+    "notes": "Leadership roles: evaluate warehouse-specific gaps"
+  },
+  {
+    "profile_id": "logistics-entry",
+    "enabled": "FALSE",
+    "display_name": "Junior logistics / procurement",
+    "track": "Logistics & supply chain",
+    "title_terms": "logistikkoordinator;logistics coordinator;junior buyer;procurement coordinator;materialdisponent;disponent logistik;supply chain coordinator",
+    "notes": "Optional secondary track"
+  },
+  {
+    "profile_id": "project-coordination",
+    "enabled": "FALSE",
+    "display_name": "Project coordination",
+    "track": "Project management",
+    "title_terms": "junior projektmanager;projektkoordinator;project coordinator;assistant project manager",
+    "notes": "Optional cross-sector roles"
+  },
+  {
+    "profile_id": "operations",
+    "enabled": "FALSE",
+    "display_name": "Business operations",
+    "track": "Operations",
+    "title_terms": "operations coordinator;operations specialist;operations supervisor;process coordinator",
+    "notes": "Optional career transition"
+  }
+]
