@@ -247,3 +247,22 @@ def test_nomado24_public_api_parse_and_filter():
     assert len(found)==1
     assert found[0]['role']=='Logistics Team Lead'
     assert 'Nomado24' in found[0]['source']
+
+
+def test_eures_germany_only_job_links():
+    class Eures:
+        def post(self,url,json,headers,timeout):
+            assert json['locationCodes']==['de']
+            assert json['keywords'][0]['specificSearchCode']=='TITLE'
+            return MockResponse({'jvs':[
+                {'id':'MTAwMDEtMTAwMTEzOTMxMS1TIDE','title':'Bauleiter',
+                 'locationMap':{'DE':['DE300']},'employer':{'name':'Example GmbH'},
+                 'translations':{'de':{'title':'Bauleiter Hochbau','description':'Baukoordination'}}},
+                {'id':'MTAwMDEtMTAwMTEzOTMxMS1TIDI','title':'Bauleiter',
+                 'locationMap':{'AT':['AT']},'employer':{'name':'Austria GmbH'}}
+            ]})
+    roles=[{'enabled':True,'terms':['bauleiter']}]
+    jobs=list(s.collect_eures(Eures(),roles,{'max_queries':1}))
+    assert len(jobs)==1
+    assert jobs[0]['company']=='Example GmbH'
+    assert '/jv-details/MTAwMDEtMTAwMTEzOTMxMS1TIDE' in jobs[0]['job_url']
