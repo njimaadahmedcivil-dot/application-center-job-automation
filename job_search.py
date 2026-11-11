@@ -447,7 +447,7 @@ def update_source_health(client, sheet_id, results, cfg):
                      count if enabled.get(name) else '',
                      'OK' if status=='ok' else ('Inactive' if status=='inactive' else 'Error'),
                      '' if status in ('ok','inactive') else str(status)[:160]])
-    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F10'
+    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F12'
     try:
         r=client.put(endpoint,params={'valueInputOption':'RAW'},json={'values':rows},timeout=30)
         r.raise_for_status()
