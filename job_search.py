@@ -299,6 +299,29 @@ def collect_adzuna(session, profiles, settings):
               'source':'Adzuna Germany official API'})
 
 
+
+def collect_nomado24(session, profiles, settings):
+    """Public Nomado24 API: remote/hybrid Germany/EU jobs; attribution by source and job URL."""
+    terms=active_search_terms(profiles,max_queries=int(settings.get('max_queries',6)))
+    for term in terms:
+        response=session.get('https://api.nomado24.de/api/public/v1/jobs',
+             params={'q':term,'per_page':min(25,int(settings.get('results_per_query',20))),
+                     'page':1},timeout=20)
+        response.raise_for_status()
+        payload=response.json()
+        if not isinstance(payload.get('data'),list):
+            raise ValueError('Unexpected Nomado24 response format')
+        for x in payload['data']:
+            loc=x.get('location') or ''
+            # Remote roles covering only another region cannot be assumed German-eligible.
+            if not re.search(r'deutschland|germany|berlin|hamburg|frankfurt|münchen|munich|remote.*(eu|europe|de)|hybrid',loc,re.I):
+                continue
+            yield normalize({'company':x.get('companyName') or 'Unlisted employer',
+                'role':x.get('title'),'location':loc,'job_url':x.get('url'),
+                'description':' '.join(str(v) for v in (x.get('tags') or [])),
+                'source':'Nomado24 public API (https://www.nomado24.com)'})
+
+
 def dedup_key(item):
     url=canonical_url(item.get('job_url',''))
     if url: return 'u:'+url.casefold()
@@ -428,7 +451,7 @@ def append_jobs(client,sheet_id,jobs):
 
 
 
-COLLECTOR_ORDER = ['Arbeitnow','Bundesagentur','Adzuna','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
+COLLECTOR_ORDER = ['Arbeitnow','Bundesagentur','Adzuna','Nomado24','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
 
 
 def update_source_health(client, sheet_id, results, cfg):
@@ -437,7 +460,8 @@ def update_source_health(client, sheet_id, results, cfg):
     enabled={'Arbeitnow':bool(cfg.get('arbeitnow',{}).get('enabled')),
              'Bundesagentur':bool(cfg.get('bundesagentur',{}).get('enabled')),
              'Adzuna':bool(cfg.get('adzuna',{}).get('enabled') and os.getenv('ADZUNA_APP_ID') and os.getenv('ADZUNA_APP_KEY')),
-             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[3:]}}
+             'Nomado24':bool(cfg.get('nomado24',{}).get('enabled')),
+             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[4:]}}
     timestamp=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y-%m-%d %H:%M')
     rows=[['collector','enabled','last_run_berlin','records_fetched','status','detail']]
     for name in COLLECTOR_ORDER:
@@ -447,7 +471,7 @@ def update_source_health(client, sheet_id, results, cfg):
                      count if enabled.get(name) else '',
                      'OK' if status=='ok' else ('Inactive' if status=='inactive' else 'Error'),
                      '' if status in ('ok','inactive') else str(status)[:160]])
-    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F12'
+    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F13'
     try:
         r=client.put(endpoint,params={'valueInputOption':'RAW'},json={'values':rows},timeout=30)
         r.raise_for_status()
@@ -489,6 +513,8 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
         collectors.append(('Bundesagentur',lambda:collect_ba_jobs(session,profiles,cfg['bundesagentur'])))
     if cfg.get('adzuna',{}).get('enabled'):
         collectors.append(('Adzuna',lambda:collect_adzuna(session,profiles,cfg['adzuna'])))
+    if cfg.get('nomado24',{}).get('enabled'):
+        collectors.append(('Nomado24',lambda:collect_nomado24(session,profiles,cfg['nomado24'])))
     if cfg.get('rss'):
         collectors.append(('RSS',lambda:collect_rss(session,cfg.get('rss',[]))))
     if cfg.get('greenhouse'):
