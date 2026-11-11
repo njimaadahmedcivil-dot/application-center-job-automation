@@ -24,11 +24,11 @@
   "workable": [],
   "personio": [],
   "bundesagentur": {
-    "enabled": true,
+    "enabled": false,
     "max_queries": 6,
     "results_per_query": 15,
     "days": 7,
-    "note": "Unofficial community-documented BA interface; disable on access errors"
+    "note": "Disabled after live 2026-11-11 response schema failure; unofficial backend is not stable"
   },
   "adzuna": {
     "enabled": false,
@@ -36,5 +36,11 @@
     "results_per_query": 20,
     "days": 14,
     "note": "Requires ADZUNA_APP_ID and ADZUNA_APP_KEY GitHub secrets"
+  },
+  "nomado24": {
+    "enabled": true,
+    "max_queries": 6,
+    "results_per_query": 20,
+    "note": "Public beta API; link and attribution to nomado24.com required"
   }
 }
