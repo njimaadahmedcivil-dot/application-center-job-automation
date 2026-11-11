@@ -1,48 +1,45 @@
-# German job sources — precise integration status
+# German job-search source coverage — verified status, November 11, 2026
 
-## Tested end to end
-- **Arbeitnow public API**: authenticated GitHub -> Google Sheets write confirmed by a live run on 2026-11-11. The API uses no user key; 5 pages per run are now configured.
+This repo is a real automated job-search pipeline. The `Site_Coverage` and `Source_Health` tabs in the connected Google Sheet are the operational source of truth.
 
-## Other sources returning live data (2026-11-11)
-- **Berlin Startup Jobs public RSS:** successfully fetched 12 feed records. Employer identity in these entries needs manual verification before application.
-- **AECOM / SmartRecruiters:** successfully fetched 200 records from the configured public company board. The postings include global locations; the script filters for Germany, so source records are not necessarily relevant vacancies.
+## Live-tested and enabled sources
 
-## Implemented source families, not configured with employer tokens
-- RSS/Atom
-- Greenhouse public boards (`board_token`)
-- Lever public boards (`site`)
-- SmartRecruiters public company boards (`company_id`)
-- Ashby public boards (`board`)
-- Recruitee public boards (`site`)
-- Workable public boards (`account`)
-- Personio public jobs XML (`tenant` and optional `domain`)
+| Source | Collection method | Last known verified response | Coverage |
+| --- | --- | --- | --- |
+| Arbeitnow | Public documented API | 1,500 records per five-page run | Germany and Europe, multiple employers |
+| Nomado24 | Public documented API | 37 records | German/EU remote and hybrid jobs; source attribution required |
+| Berlin Startup Jobs | Public RSS | 12 records | Berlin-focused posts |
+| AECOM | SmartRecruiters company public API | 200 records | International employer feed; only German matches retained |
+| EURES | Community-documented public EU portal interface | 36 Germany-filtered records | German jobs imported from European employment services; limited city fields |
 
-These adapters are covered by local mocked tests. They cannot return a particular company's jobs until its public feed identifier has been verified and added to `config/sources.json`.
+The verified combined live run returned 1,785 raw records and saved 12 additional matches; earlier runs also saved 16 new matches. Raw records are not verified applicant matches. Search results are append-only and recorded as `discovered`, never applied.
 
-## Research targets with no direct collector
-XING, StepStone, Indeed Germany, Bundesagentur für Arbeit, LinkedIn and most German recruiting agencies / construction career pages in `config/source_catalog.json` are not individually scraped. They require approved feeds, public employer ATS, official alerts or individual integration work. The BA Jobsuche endpoint described by third-party projects is *unofficial*; do not treat it as a guaranteed supported API.
+## Implemented, not enabled
 
-## Tracking in Google Sheets
-- `Jobs`: actual discovered jobs (deduplicated; status discovered only).
-- `Role_Searches`: user-defined searches, including entirely new roles, and ON/OFF controls.
-- `Source_Health`: collector group, enabled status, last checked time, count fetched, error.
-- `Site_Coverage`: full website catalog with candid per-site status.
-- `Run_History`: audit log of matches and new saves, populated by runs using the latest code.
+- **Adzuna Germany:** officially documented API connector in `job_search.py` but needs Adzuna-issued `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` GitHub repository secrets. Set `"enabled": true` in `config/sources.json` only after registration and review of terms, attribution and API quota. Never commit credentials.
+- Greenhouse, Lever, SmartRecruiters, Ashby, Recruitee, Workable and Personio: generic public career-board collectors. Their employer-specific identifiers must be discovered and checked before activating.
 
-## Source configuration example
+## Disabled after a failed live check
 
-```json
-{
-  "arbeitnow": {"enabled": true, "pages": 5},
-  "rss": [],
-  "greenhouse": [{"company":"Verified Employer","board_token":"verified-board-slug"}],
-  "lever": [{"company":"Verified Employer","site":"verified-lever-slug"}],
-  "smartrecruiters": [{"company":"Verified Employer","company_id":"VerifiedCompanySlug"}],
-  "ashby": [{"company":"Verified Employer","board":"verified-ashby-slug"}],
-  "recruitee": [{"company":"Verified Employer","site":"verified-recruitee-slug"}],
-  "workable": [{"company":"Verified Employer","account":"verified-workable-slug"}],
-  "personio": [{"company":"Verified Employer","tenant":"verified-personio-slug","domain":"de"}]
-}
-```
+- **Bundesagentur für Arbeit**: community-documented, unsupported Jobsuche endpoint was queried but the returned response lacked the documented `stellenangebote` field. This connector is disabled in `config/sources.json`. Do not claim it is actively scraping the official agency portal. Many BA and agency jobs may nevertheless appear via the EURES feed.
 
-No CAPTCHA evasion, login bypass or unsupported automated mass scraping. A source is never marked production-verified solely because code or a domain has been configured.
+## Cataloged, but NOT directly integrated
+
+XING, StepStone, Indeed Deutschland, LinkedIn, meinestadt.de, Stellenanzeigen.de, Jobware, Kimeta, get in Engineering, ingenieur.de, academics.de, and recruitment companies such as Manpower, Randstad, Adecco and many construction firms. They are **research targets**, not fully implemented per-site scrapers. Some employers and agencies (e.g. FERCHAU, I.K. Hofmann) have already appeared through EURES, which is source coverage, not a working direct scraper on the agency website.
+
+For sites with restrictions or no documented public jobseeker search API, use supported employer ATS feeds, sanctioned job alerts, or licensed job-search aggregators. Never circumvent account controls, CAPTCHAs or access restrictions.
+
+## Role search and ranking
+
+`Role_Searches` in Google Sheets is user-editable: enable, disable, rename or add any role and semicolon-separated keywords. The query-driven collectors (EURES, Nomado24, Adzuna, experimental BA) generate queries from active profiles. Other feeds deliver records that are title-filtered. Relevance scores are preliminary keyword heuristics, not a verified qualification assessment or odds of getting hired.
+
+## Dashboard / data
+
+- `Jobs` — 20-column master job tracker
+- `Role_Searches` — configurable searches
+- `Source_Health` — live collector counts and API errors
+- `Run_History` — counts of matched and newly saved jobs
+- `Site_Coverage` — catalog and real status
+- Dashboard website — separately deployed Google Apps Script UI, refresh it to see database updates
+
+Important: Source listing links, not applying to jobs. Review each live vacancy, employer, exact location, German and driving-license requirements before submitting an application.
