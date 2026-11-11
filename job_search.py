@@ -365,6 +365,21 @@ def update_source_health(client, sheet_id, results, cfg):
         LOG.warning('Source_Health update unavailable: %s',exc)
 
 
+
+def append_run_history(client, sheet_id, source_count, matches, saved, profiles, source_results):
+    """Append a compact audit record; never change or reclassify existing applications."""
+    now=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y-%m-%d %H:%M')
+    enabled='; '.join(p['name'] for p in profiles if p['enabled'])
+    errors='; '.join(name+': '+status[:80] for name,_,status in source_results if status!='ok')
+    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Run_History!A:F:append'
+    try:
+        response=client.post(endpoint,params={'valueInputOption':'RAW','insertDataOption':'INSERT_ROWS'},
+            json={'values':[[now,source_count,matches,saved,enabled,errors]]},timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        LOG.warning('Run_History append unavailable: %s',exc)
+
+
 def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_ID):
     cfg=json.loads(Path(config_path).read_text(encoding='utf-8'))
     session=requests.Session()
@@ -407,6 +422,7 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
     selected=filter_jobs(candidates,urls,triples,profiles=profiles)[:limit]
     count=append_jobs(client,sheet_id,selected)
     update_source_health(client,sheet_id,source_results,cfg)
+    append_run_history(client,sheet_id,len(candidates),len(selected),count,profiles,source_results)
     print(json.dumps({'source_records':len(candidates),'new_saved':count,'sources':[{'name':n,'records':q,'status':st} for n,q,st in source_results], 'job_titles':[x['role'] for x in selected]},ensure_ascii=False))
     return selected
 
