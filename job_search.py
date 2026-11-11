@@ -322,6 +322,45 @@ def collect_nomado24(session, profiles, settings):
                 'source':'Nomado24 public API (https://www.nomado24.com)'})
 
 
+
+def collect_eures(session, profiles, settings):
+    """Experimental EURES portal job search (community-documented public web interface)."""
+    terms=active_search_terms(profiles,max_queries=int(settings.get('max_queries',4)))
+    endpoint='https://europa.eu/eures/api/jv-searchengine/public/jv-search/search'
+    for term in terms:
+        body={'resultsPerPage':min(int(settings.get('results_per_query',15)),25),
+              'page':1,'sortSearch':'MOST_RECENT',
+              'keywords':[{'keyword':term,'specificSearchCode':'TITLE'}],
+              'publicationPeriod':'LAST_WEEK',
+              'occupationUris':[],'skillUris':[],'requiredExperienceCodes':[],
+              'positionScheduleCodes':[],'sectorCodes':[],
+              'educationAndQualificationLevelCodes':[],'positionOfferingCodes':[],
+              'locationCodes':['de'],'euresFlagCodes':[],
+              'otherBenefitsCodes':[],'requiredLanguages':[],
+              'minNumberPost':None,'sessionId':'application-center-public-search',
+              'requestLanguage':'de'}
+        resp=session.post(endpoint,json=body,headers={'Accept':'application/json'},
+                          timeout=25)
+        resp.raise_for_status()
+        payload=resp.json()
+        entries=payload.get('jvs')
+        if not isinstance(entries,list):
+            raise ValueError('Unexpected EURES response; jvs missing')
+        for x in entries:
+            country_map=x.get('locationMap') or {}
+            if not any(str(k).lower()=='de' for k in country_map): continue
+            job_id=str(x.get('id') or '')
+            if not re.fullmatch('[A-Za-z0-9_=-]{5,255}',job_id): continue
+            emp=x.get('employer') or {}
+            trans=x.get('translations') or {}
+            de=trans.get('de') or {}
+            yield normalize({'company':emp.get('name') or 'Unlisted employer',
+                'role':de.get('title') or x.get('title'), 'location':'Germany',
+                'job_url':f'https://europa.eu/eures/portal/jv-se/jv-details/{job_id}?lang=de',
+                'description':de.get('description') or x.get('description') or '',
+                'source':'EURES EU jobs (community-documented portal endpoint)'})
+
+
 def dedup_key(item):
     url=canonical_url(item.get('job_url',''))
     if url: return 'u:'+url.casefold()
@@ -451,7 +490,7 @@ def append_jobs(client,sheet_id,jobs):
 
 
 
-COLLECTOR_ORDER = ['Arbeitnow','Bundesagentur','Adzuna','Nomado24','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
+COLLECTOR_ORDER = ['Arbeitnow','Bundesagentur','Adzuna','Nomado24','EURES','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
 
 
 def update_source_health(client, sheet_id, results, cfg):
@@ -461,7 +500,8 @@ def update_source_health(client, sheet_id, results, cfg):
              'Bundesagentur':bool(cfg.get('bundesagentur',{}).get('enabled')),
              'Adzuna':bool(cfg.get('adzuna',{}).get('enabled') and os.getenv('ADZUNA_APP_ID') and os.getenv('ADZUNA_APP_KEY')),
              'Nomado24':bool(cfg.get('nomado24',{}).get('enabled')),
-             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[4:]}}
+             'EURES':bool(cfg.get('eures',{}).get('enabled')),
+             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[5:]}}
     timestamp=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y-%m-%d %H:%M')
     rows=[['collector','enabled','last_run_berlin','records_fetched','status','detail']]
     for name in COLLECTOR_ORDER:
@@ -471,7 +511,7 @@ def update_source_health(client, sheet_id, results, cfg):
                      count if enabled.get(name) else '',
                      'OK' if status=='ok' else ('Inactive' if status=='inactive' else 'Error'),
                      '' if status in ('ok','inactive') else str(status)[:160]])
-    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F13'
+    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F14'
     try:
         r=client.put(endpoint,params={'valueInputOption':'RAW'},json={'values':rows},timeout=30)
         r.raise_for_status()
@@ -515,6 +555,8 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
         collectors.append(('Adzuna',lambda:collect_adzuna(session,profiles,cfg['adzuna'])))
     if cfg.get('nomado24',{}).get('enabled'):
         collectors.append(('Nomado24',lambda:collect_nomado24(session,profiles,cfg['nomado24'])))
+    if cfg.get('eures',{}).get('enabled'):
+        collectors.append(('EURES',lambda:collect_eures(session,profiles,cfg['eures'])))
     if cfg.get('rss'):
         collectors.append(('RSS',lambda:collect_rss(session,cfg.get('rss',[]))))
     if cfg.get('greenhouse'):
