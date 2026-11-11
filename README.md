@@ -1,48 +1,69 @@
-# Application Center — Automated German Job Discovery
+# Application Center — Germany Job Search Engine
 
-A private-use job-discovery adapter that runs in GitHub Actions and writes new vacancies to the user's existing Google Sheets tracker. The script never applies to jobs or marks applications submitted.
+**Operational.** This GitHub Actions project searches selected German/European vacancy feeds and automatically saves newly discovered candidate jobs to the user's existing Google Sheets tracker. It does not submit applications.
 
-## Live integrated system
-- GitHub repository: https://github.com/njimaadahmedcivil-dot/application-center-job-automation
-- Google Sheets database: https://docs.google.com/spreadsheets/d/1JUKnCUmshWZpKV8-VOebJ-KNScMu9R45pf0j_crsD4w/edit
-- Google Cloud service account stored ONLY in GitHub Actions secret `GOOGLE_SERVICE_ACCOUNT_JSON` (do not commit the JSON).
-- Scheduled check approximately **08:13 Europe/Berlin**, with daylight-saving time handling. GitHub scheduled jobs are best effort and can be delayed.
-- On changes to search code, workflow runs automatically on `main`, and you can start a manual run any time via **Actions**.
+## Open the live system
 
-## Current job sources
-**Proven earlier:** Arbeitnow public API, including successful job-to-Sheets synchronization on 2026-11-11.
+- [GitHub repository](https://github.com/njimaadahmedcivil-dot/application-center-job-automation)
+- [Google Sheets Job Tracker](https://docs.google.com/spreadsheets/d/1JUKnCUmshWZpKV8-VOebJ-KNScMu9R45pf0j_crsD4w/edit)
+- **Actions** tab → **Application Center Daily Job Search** for run history.
 
-**Additional configured sources awaiting live validation:** AECOM public SmartRecruiters board, Berlin Startup Jobs public RSS feed.
+## What works and what does not
 
-**Code implemented; employer identifiers still needed:** Greenhouse, Lever, SmartRecruiters, Ashby, Recruitee, Workable and Personio ATS feeds; standard public RSS feeds. See `config/SOURCE_COVERAGE.md`.
+**Five channels responded successfully in live GitHub runs on 2026-11-11:**
+1. Arbeitnow public API.
+2. Nomado24 public German/EU remote/hybrid jobs API.
+3. Berlin Startup Jobs public RSS feed.
+4. AECOM SmartRecruiters public employer feed.
+5. EURES public portal job search interface (community-documented, not a guaranteed official API).
 
-**Not directly integrated:** XING, StepStone, Indeed, Bundesagentur für Arbeit, LinkedIn, most agencies and construction-company portals. Those websites are cataloged as research targets, not falsely described as working scrapers. Use approved public feeds, partner APIs, employer ATS pages or official alerts. No CAPTCHAs, login or rate-limit bypass.
+Live combined fetch: **1,785 raw records**; latest EURES expansion saved **12 new** jobs in the tracker. The database has 34 discovery entries after these tests. Raw records are not automatically qualified or confirmed open on employer websites.
 
-## Google Sheets tabs
-- `Jobs`: application records A:T, append-only discovery, no overwrites of existing applications.
-- `Dashboard`: spreadsheet summary used by the deployed Apps Script site.
-- `Role_Searches`: **add, edit, enable or disable ANY role** with no Python edit. Exact columns `profile_id | enabled | display_name | track | title_terms | notes`.
-- `Source_Health`: date/time, enabled collector groups, returned records and errors (updated after each run).
-- `Run_History`: per-run counts of discovered records, newly matching/saved jobs, enabled searches, and source errors.
-- `Site_Coverage`: per-website catalog, whether it has real collector coverage, and next steps.
+**Not yet directly scraped:** XING, StepStone, Indeed Germany, BA Jobsuche, Manpower, Randstad, Adecco, most individual German agency and employer sites. Several agencies are included indirectly in EURES results. See [full source coverage](config/SOURCE_COVERAGE.md). German job portals do not all provide sanctioned jobseeker search APIs. The BA unofficial interface was disabled after an incompatible live response.
 
-A new search profile means filtering *available collected records* by job titles, not magically adding a new job-board connection. Separate terms in `title_terms` using semicolons. Use one of the allowed tracks `Civil engineering`, `Logistics & supply chain`, `Project management`, `Operations`, `Other`. Leave job applications unsubmitted until user confirmation.
+**Available but not configured:** documented Adzuna Germany search API (requires free developer API credentials), plus public ATS collectors for Greenhouse, Lever, SmartRecruiters, Ashby, Recruitee, Workable and Personio. These must be configured and tested for each employer.
 
-## Local checks
-```sh
-python -m pip install -r requirements.txt
-python -m pytest -q
-python job_search.py --dry-run
-```
-Mocked unit tests (18 locally passed) verify data extraction, civil-industry false-positive rejection, role switches, Google Sheet payloads and deduplication. Mock tests cannot prove any source currently returns live data. Actual source status is shown in the `Source_Health` tab after GitHub runs.
+## Customize job searches in Google Sheets
 
-## Security and quality
-- Keep repository **Private** (this must be configured in GitHub Settings by the repository owner if it is public).
-- Never upload the service-account JSON or GitHub secrets to repository files or chat.
-- The job-score number is a simple ranking heuristic, not probability of getting hired.
-- Generic Project Engineer jobs outside civil/construction (e.g., medical devices) are screened out under civil profiles; other job profiles are user-configurable.
-- Candidates must manually verify language thresholds, work authorization, driver's licence and skills before applying.
-- The existing Apps Script dashboard UI is separate from this repository and is not altered by GitHub changes.
+Open **Role_Searches**. One row per job profile:
 
-## Source list
-See `config/source_catalog.json` (43 research targets), `config/sources.json` (active feeds) and `config/SOURCE_COVERAGE.md` (honest status).
+`profile_id | enabled | display_name | track | title_terms | notes`
+
+Use `TRUE` or `FALSE` to switch profiles on/off. Add any new role with a unique ID, one of five allowed tracks (`Civil engineering`, `Logistics & supply chain`, `Project management`, `Operations`, `Other`), and job title terms separated by semicolons. Example: `teamleiter logistik;logistics team lead;schichtleiter logistik`. No Python edits are needed.
+
+The same search profiles apply to every configured collector; query-based providers receive bounded search phrases derived from all active profiles.
+
+## Automations
+
+- Workflow: `.github/workflows/daily-jobs.yml`
+- Daily target: **08:13 Berlin time** with daylight-saving awareness.
+- Manual runs: any time in GitHub Actions.
+- Runs also trigger on search-code/configuration changes committed to main (serialized to avoid simultaneous writes).
+- All jobs are appended to the `Jobs` tab with `discovered` status; never change applications to `applied` automatically.
+- Data quality flags highlight language B2/C1 requirements, driving licence and specialist software when mentioned. The initial score is heuristic only.
+
+## Source monitoring
+
+Check **Source_Health**, **Run_History**, and **Site_Coverage** tabs in the connected tracker. They differentiate:
+- operational API responses and number of records retrieved,
+- failed or disabled interfaces,
+- the total new matches saved during each run,
+- websites in the longer wish list but not directly integrated.
+
+## Optional: activate Adzuna Germany
+
+1. Create an Adzuna API developer account at https://developer.adzuna.com and obtain `app_id` and `app_key`.
+2. GitHub → Settings → Secrets and variables → Actions → **New repository secret**.
+3. Create repository secrets `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` with their respective values. **Never upload the keys as repository files.**
+4. Change `"enabled": false` to `true` for `adzuna` in `config/sources.json`.
+5. Check **Actions** and **Source_Health** for the first live fetch.
+6. Observe Adzuna's personal-use/API quotation limits and attribution requirements.
+
+## Privacy and limitations
+
+- The service account credential stays in `GOOGLE_SERVICE_ACCOUNT_JSON` GitHub Actions secret. Never upload it or paste it into chat.
+- **Make this repository Private** in Settings → General → Danger Zone; it was last observed as Public and the connected tool cannot change visibility.
+- GitHub Actions scheduling is best effort; exact execution time is not guaranteed.
+- Sources may change formats or block public access. Failures are logged; healthy sources continue.
+- The deployed Apps Script dashboard is separate and reads this Google Sheet after a page refresh.
+- An application is **never submitted** by this workflow. Confirm vacancy details, your qualifications, language requirements and work authorization before applying.
