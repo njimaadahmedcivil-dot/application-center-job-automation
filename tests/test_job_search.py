@@ -170,3 +170,63 @@ def test_run_history_appends_only_summary():
     assert 'Run_History' in url
     assert row[1:4]==[120,4,3]
     assert row[4]=='Civil engineering'
+
+
+def test_ba_jobs_parse_official_link_and_keep_german_location():
+    class BASession:
+        def get(self,url,params,headers,timeout):
+            assert '/pc/v6/jobs' in url
+            assert params['was']=='bauleiter'
+            assert headers['X-API-Key']=='jobboerse-jobsuche'
+            return MockResponse({'stellenangebote':[{
+                'refnr':'10000-12345678-S','titel':'Bauleiter Hochbau',
+                'arbeitgeber':'Bau GmbH','arbeitsort':{'ort':'Berlin','land':'Deutschland'}}]})
+    profiles=[{'enabled':True,'terms':['bauleiter'],'name':'Civil','track':'Civil engineering'}]
+    results=list(s.collect_ba_jobs(BASession(),profiles,{'max_queries':2,'results_per_query':10,'days':7}))
+    assert len(results)==1
+    assert results[0]['job_url']=='https://www.arbeitsagentur.de/jobsuche/jobdetail/10000-12345678-S'
+    assert results[0]['location']=='Berlin, Deutschland'
+
+
+def test_ba_rejects_unexpected_payload():
+    class BadResponse:
+        def raise_for_status(self): pass
+        def json(self): return {'not_jobs':[]}
+    class BadSession:
+        def get(self, *args, **kwargs): return BadResponse()
+    profiles=[{'enabled':True,'terms':['bauleiter'],'name':'Civil','track':'Civil engineering'}]
+    import pytest
+    with pytest.raises(ValueError):
+        list(s.collect_ba_jobs(BadSession(),profiles,{}))
+
+
+def test_adzuna_requires_secrets_and_never_embeds_them(monkeypatch):
+    monkeypatch.delenv('ADZUNA_APP_ID',raising=False)
+    monkeypatch.delenv('ADZUNA_APP_KEY',raising=False)
+    class NoNetwork:
+        def get(self,*args,**kwargs): raise AssertionError('No API call without credentials')
+    assert list(s.collect_adzuna(NoNetwork(),[{'enabled':True,'terms':['bauleiter']}],{}))==[]
+
+
+def test_adzuna_parsing_with_fake_session(monkeypatch):
+    monkeypatch.setenv('ADZUNA_APP_ID','FAKE_ID')
+    monkeypatch.setenv('ADZUNA_APP_KEY','FAKE_KEY')
+    class AdzunaSession:
+        def get(self,url,params,timeout):
+            assert '/jobs/de/search/' in url
+            assert params['what']=='bauleiter'
+            return MockResponse({'results':[{'title':'Bauleiter Hochbau','redirect_url':'https://example.com/job/1',
+                'company':{'display_name':'Example GmbH'},'location':{'display_name':'Hamburg, Deutschland'},
+                'description':'Hochbau'}]})
+    rows=list(s.collect_adzuna(AdzunaSession(),[{'enabled':True,'terms':['bauleiter']}],{'max_queries':1}))
+    assert rows[0]['company']=='Example GmbH'
+    assert rows[0]['source']=='Adzuna Germany official API'
+
+
+def test_search_queries_rotate_across_active_categories():
+    profiles=[
+      {'enabled':True,'terms':['bauleiter','bauingenieur','arbeitsvorbereitung']},
+      {'enabled':True,'terms':['teamleiter logistik','lagerleitung']},
+      {'enabled':False,'terms':['unwanted term']}
+    ]
+    assert s.active_search_terms(profiles,4)==['bauleiter','teamleiter logistik','bauingenieur','lagerleitung']
