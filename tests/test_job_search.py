@@ -103,3 +103,53 @@ def test_source_catalog_has_honest_status():
     assert len(catalog)>40
     assert next(x for x in catalog if x['name']=='XING')['integration_status']=='not_integrated'
     assert next(x for x in catalog if x['name']=='Arbeitnow')['integration_status']=='implemented'
+
+
+def test_general_engineering_medical_false_positive_rejected():
+    profiles=s.parse_role_rows([s.ROLE_HEADERS,['civil','TRUE','Civil','Civil engineering','projektingenieur;project engineer','']])
+    vals=[{'company':'Medico','role':'Projektingenieur in der Medizintechnik','location':'Berlin','job_url':'https://medico.example/1','description':'Product development of medical devices'},
+          {'company':'Bau','role':'Projektingenieur Hochbau','location':'Berlin','job_url':'https://bau.example/2','description':'Construction site coordination'}]
+    assert [x['company'] for x in s.filter_jobs(vals,profiles=profiles)]==['Bau']
+
+
+class AshbySession:
+    def get(self,url,**kwargs):
+        return MockResponse({'jobs':[{'isListed':True,'title':'Junior Bauleiter','location':'Berlin, Germany','jobUrl':'https://jobs.ashbyhq.com/example/one','descriptionPlain':'Construction'}]})
+
+
+def test_ashby_mock():
+    jobs=list(s.collect_ashby(AshbySession(),[{'board':'example','company':'TestCo'}]))
+    assert jobs[0]['company']=='TestCo' and jobs[0]['role']=='Junior Bauleiter'
+
+
+class RecruiteeSession:
+    def get(self,url,**kwargs):
+        return MockResponse({'offers':[{'title':'Teamleiter Logistik','city':'Berlin','careers_url':'https://example.recruitee.com/o/logistik','description':'Warehouse shift staffing'}]})
+
+
+def test_recruitee_mock():
+    jobs=list(s.collect_recruitee(RecruiteeSession(),[{'site':'example','company':'Example'}]))
+    assert jobs[0]['role']=='Teamleiter Logistik'
+
+
+class WorkableSession:
+    def get(self,url,**kwargs):
+        return MockResponse({'jobs':[{'title':'Junior Bauingenieur','location':{'city':'Berlin','country':'Germany'},'url':'https://apply.workable.com/sample/j/123/'}]})
+
+
+def test_workable_mock():
+    jobs=list(s.collect_workable(WorkableSession(),[{'account':'sample','company':'Sample'}]))
+    assert jobs[0]['role']=='Junior Bauingenieur' and 'Germany' in jobs[0]['location']
+
+
+class PersonioSession:
+    def get(self,url,**kwargs):
+        class R:
+            content=b'<positions><position><id>100</id><name>Bauleiter</name><city>Berlin</city><country>Germany</country><jobDescription>Baustelle</jobDescription></position></positions>'
+            def raise_for_status(self):pass
+        return R()
+
+
+def test_personio_mock():
+    jobs=list(s.collect_personio(PersonioSession(),[{'tenant':'sample','company':'Company'}]))
+    assert jobs[0]['role']=='Bauleiter' and 'Berlin' in jobs[0]['location']
