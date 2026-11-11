@@ -213,18 +213,28 @@ def collect_personio(session, boards):
 
 
 def active_search_terms(profiles, max_queries=8):
-    """A bounded set of search queries derived from the user's active Sheet profiles."""
-    terms=[]
+    """Round-robin active profiles so logistics isn't crowded out by civil title terms."""
+    pools=[]
     for p in profiles or []:
         if not p.get('enabled'): continue
+        terms=[]
         for term in p.get('terms',[]):
             term=clean(term)
-            if len(term)<5 or len(term)>70: continue
-            if term.casefold() not in {x.casefold() for x in terms}:
+            if 5<=len(term)<=70 and term.casefold() not in {x.casefold() for x in terms}:
                 terms.append(term)
-            if len(terms)>=max_queries: return terms
-    return terms
-
+        if terms: pools.append(terms)
+    results=[]
+    while pools and len(results)<max(1,min(int(max_queries),25)):
+        for terms in list(pools):
+            if not terms:
+                pools.remove(terms)
+                continue
+            term=terms.pop(0)
+            if term.casefold() not in {x.casefold() for x in results}:
+                results.append(term)
+                if len(results)>=max_queries: break
+        pools=[p for p in pools if p]
+    return results
 
 def collect_ba_jobs(session, profiles, settings):
     """Experimental BA Jobsuche interface documented by bundesAPI, not an official public API.
