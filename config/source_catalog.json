@@ -25,7 +25,7 @@
     "name": "Bundesagentur fuer Arbeit",
     "website": "https://www.arbeitsagentur.de/jobsuche/",
     "preferred_collection": "community_documented_unofficial_backend",
-    "integration_status": "experimental_unverified",
+    "integration_status": "disabled_live_schema_failure",
     "note": "May be changed or restricted; official BA does not offer a guaranteed open jobs API"
   },
   {
@@ -308,5 +308,13 @@
     "preferred_collection": "official_search_api_with_secrets",
     "integration_status": "implemented_credentials_required",
     "note": "Requires ADZUNA_APP_ID and ADZUNA_APP_KEY to enable"
+  },
+  {
+    "category": "German remote / hybrid portals",
+    "name": "Nomado24",
+    "website": "https://www.nomado24.com",
+    "preferred_collection": "documented_public_api",
+    "integration_status": "live_verified_2026-11-11",
+    "note": "37 records fetched successfully, 2026-11-11; attribution link required"
   }
 ]
