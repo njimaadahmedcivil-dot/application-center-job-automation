@@ -1,10 +1,26 @@
 {
   "arbeitnow": {
     "enabled": true,
-    "pages": 3
+    "pages": 5
   },
-  "rss": [],
+  "rss": [
+    {
+      "name": "Berlin Startup Jobs public feed",
+      "url": "https://berlinstartupjobs.com/feed/",
+      "location": "Berlin, Germany",
+      "company": "Berlin Startup Jobs listings"
+    }
+  ],
   "greenhouse": [],
   "lever": [],
-  "smartrecruiters": []
+  "smartrecruiters": [
+    {
+      "company": "AECOM",
+      "company_id": "AECOM2"
+    }
+  ],
+  "ashby": [],
+  "recruitee": [],
+  "workable": [],
+  "personio": []
 }
