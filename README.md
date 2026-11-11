@@ -23,6 +23,7 @@ A private-use job-discovery adapter that runs in GitHub Actions and writes new v
 - `Dashboard`: spreadsheet summary used by the deployed Apps Script site.
 - `Role_Searches`: **add, edit, enable or disable ANY role** with no Python edit. Exact columns `profile_id | enabled | display_name | track | title_terms | notes`.
 - `Source_Health`: date/time, enabled collector groups, returned records and errors (updated after each run).
+- `Run_History`: per-run counts of discovered records, newly matching/saved jobs, enabled searches, and source errors.
 - `Site_Coverage`: per-website catalog, whether it has real collector coverage, and next steps.
 
 A new search profile means filtering *available collected records* by job titles, not magically adding a new job-board connection. Separate terms in `title_terms` using semicolons. Use one of the allowed tracks `Civil engineering`, `Logistics & supply chain`, `Project management`, `Operations`, `Other`. Leave job applications unsubmitted until user confirmation.
@@ -33,7 +34,7 @@ python -m pip install -r requirements.txt
 python -m pytest -q
 python job_search.py --dry-run
 ```
-Mocked unit tests (17 locally passed) verify data extraction, civil-industry false-positive rejection, role switches, Google Sheet payloads and deduplication. Mock tests cannot prove any source currently returns live data. Actual source status is shown in the `Source_Health` tab after GitHub runs.
+Mocked unit tests (18 locally passed) verify data extraction, civil-industry false-positive rejection, role switches, Google Sheet payloads and deduplication. Mock tests cannot prove any source currently returns live data. Actual source status is shown in the `Source_Health` tab after GitHub runs.
 
 ## Security and quality
 - Keep repository **Private** (this must be configured in GitHub Settings by the repository owner if it is public).
