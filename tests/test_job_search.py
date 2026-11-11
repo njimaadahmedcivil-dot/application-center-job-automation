@@ -230,3 +230,20 @@ def test_search_queries_rotate_across_active_categories():
       {'enabled':False,'terms':['unwanted term']}
     ]
     assert s.active_search_terms(profiles,4)==['bauleiter','teamleiter logistik','bauingenieur','lagerleitung']
+
+
+def test_nomado24_public_api_parse_and_filter():
+    class Nomado:
+        def get(self,url,params,timeout):
+            assert url.endswith('/api/public/v1/jobs')
+            return MockResponse({'data':[
+              {'title':'Logistics Team Lead','companyName':'EU Logistics','location':'Remote (EU)',
+               'url':'https://www.nomado24.com/en/remote-jobs/job/lead-1','tags':['logistics']},
+              {'title':'Teamleiter Logistik','companyName':'US Logistics','location':'Remote (USA)',
+               'url':'https://www.nomado24.com/en/remote-jobs/job/lead-2','tags':['logistics']},
+            ]})
+    profiles=[{'enabled':True,'terms':['teamleiter logistik','logistics team lead']}]
+    found=list(s.collect_nomado24(Nomado(),profiles,{'max_queries':1}))
+    assert len(found)==1
+    assert found[0]['role']=='Logistics Team Lead'
+    assert 'Nomado24' in found[0]['source']
