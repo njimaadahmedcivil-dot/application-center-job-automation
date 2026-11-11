@@ -211,6 +211,84 @@ def collect_personio(session, boards):
                 'job_url':link,'description':desc,'source':f'Personio: {token}'})
 
 
+
+def active_search_terms(profiles, max_queries=8):
+    """A bounded set of search queries derived from the user's active Sheet profiles."""
+    terms=[]
+    for p in profiles or []:
+        if not p.get('enabled'): continue
+        for term in p.get('terms',[]):
+            term=clean(term)
+            if len(term)<5 or len(term)>70: continue
+            if term.casefold() not in {x.casefold() for x in terms}:
+                terms.append(term)
+            if len(terms)>=max_queries: return terms
+    return terms
+
+
+def collect_ba_jobs(session, profiles, settings):
+    """Experimental BA Jobsuche interface documented by bundesAPI, not an official public API.
+
+    Uses bounded job-title queries, request pacing and publicly accessible job-detail links.
+    Stops on authentication, throttling or schema failures. Never bypasses protection.
+    """
+    terms=active_search_terms(profiles, max_queries=int(settings.get('max_queries',8)))
+    if not terms: return
+    base='https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v6/jobs'
+    headers={'X-API-Key':'jobboerse-jobsuche','Accept':'application/json',
+             'User-Agent':'ApplicationCenterJobSearch/1.1 (individual job discovery)'}
+    for term in terms:
+        response=session.get(base,params={'was':term,'page':1,'size':min(int(settings.get('results_per_query',20)),25),
+                     'angebotsart':1,'veroeffentlichtseit':min(int(settings.get('days',14)),30)},
+                     headers=headers, timeout=22)
+        response.raise_for_status()
+        payload=response.json()
+        offers=payload.get('stellenangebote')
+        if not isinstance(offers,list):
+            raise ValueError('Unexpected Bundesagentur response: stellenangebote is absent')
+        for offer in offers:
+            ref=offer.get('referenznummer') or offer.get('refnr') or ''
+            if not re.fullmatch(r'[A-Za-z0-9_-]{3,80}',str(ref)): continue
+            loc=offer.get('arbeitsort') or offer.get('arbeitgeberAdresse') or {}
+            if not isinstance(loc,dict): loc={}
+            city=loc.get('ort') or loc.get('region') or 'Germany'
+            country=loc.get('land') or 'Germany'
+            location=f'{city}, {country}'
+            yield normalize({'company':offer.get('arbeitgeber') or 'Unlisted employer',
+                'role':offer.get('titel') or offer.get('stellenangebotsTitel') or offer.get('beruf'),
+                'location':location,'job_url':f'https://www.arbeitsagentur.de/jobsuche/jobdetail/{ref}',
+                'description':offer.get('stellenbeschreibung') or '',
+                'source':'Bundesagentur Jobsuche (community-documented interface)'})
+
+
+def collect_adzuna(session, profiles, settings):
+    """Official documented Adzuna API: needs repository secrets ADZUNA_APP_ID/KEY."""
+    app_id=os.getenv('ADZUNA_APP_ID','')
+    app_key=os.getenv('ADZUNA_APP_KEY','')
+    if not (app_id and app_key):
+        LOG.info('Adzuna unconfigured: set both ADZUNA_APP_ID and ADZUNA_APP_KEY')
+        return
+    terms=active_search_terms(profiles, max_queries=int(settings.get('max_queries',8)))
+    for term in terms:
+        resp=session.get('https://api.adzuna.com/v1/api/jobs/de/search/1',
+             params={'app_id':app_id,'app_key':app_key,'what':term,
+                     'results_per_page':min(int(settings.get('results_per_query',20)),25),
+                     'max_days_old':min(int(settings.get('days',14)),30),
+                     'content-type':'application/json'},timeout=22)
+        resp.raise_for_status()
+        payload=resp.json()
+        if not isinstance(payload.get('results'),list):
+            raise ValueError('Unexpected Adzuna jobs response')
+        for item in payload['results']:
+            loc=item.get('location') or {}
+            area=loc.get('display_name') or ', '.join(loc.get('area') or [])
+            company=item.get('company') or {}
+            yield normalize({'company':company.get('display_name') or 'Unlisted employer',
+              'role':item.get('title'),'location':area or 'Germany',
+              'job_url':item.get('redirect_url'), 'description':item.get('description') or '',
+              'source':'Adzuna Germany official API'})
+
+
 def dedup_key(item):
     url=canonical_url(item.get('job_url',''))
     if url: return 'u:'+url.casefold()
@@ -340,14 +418,16 @@ def append_jobs(client,sheet_id,jobs):
 
 
 
-COLLECTOR_ORDER = ['Arbeitnow','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
+COLLECTOR_ORDER = ['Arbeitnow','Bundesagentur','Adzuna','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
 
 
 def update_source_health(client, sheet_id, results, cfg):
     """Best-effort operational visibility; never overwrite application records."""
     by_name={n:(count,status) for n,count,status in results}
     enabled={'Arbeitnow':bool(cfg.get('arbeitnow',{}).get('enabled')),
-             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[1:]}}
+             'Bundesagentur':bool(cfg.get('bundesagentur',{}).get('enabled')),
+             'Adzuna':bool(cfg.get('adzuna',{}).get('enabled') and os.getenv('ADZUNA_APP_ID') and os.getenv('ADZUNA_APP_KEY')),
+             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[3:]}}
     timestamp=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y-%m-%d %H:%M')
     rows=[['collector','enabled','last_run_berlin','records_fetched','status','detail']]
     for name in COLLECTOR_ORDER:
@@ -383,10 +463,22 @@ def append_run_history(client, sheet_id, source_count, matches, saved, profiles,
 def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_ID):
     cfg=json.loads(Path(config_path).read_text(encoding='utf-8'))
     session=requests.Session()
+    # Read live search switches BEFORE issuing source queries.
+    client=None
+    if dry_run:
+        profile_data=json.loads(Path('config/role_profiles.json').read_text(encoding='utf-8'))
+        profiles=parse_role_rows([ROLE_HEADERS]+[[p.get(k,'') for k in ROLE_HEADERS] for p in profile_data])
+    else:
+        client=get_client()
+        profiles=read_role_profiles(client,sheet_id)
     candidates=[]
     collectors=[]
     if cfg.get('arbeitnow',{}).get('enabled',False):
         collectors.append(('Arbeitnow',lambda:collect_arbeitnow(session,cfg.get('arbeitnow',{}).get('pages',2))))
+    if cfg.get('bundesagentur',{}).get('enabled'):
+        collectors.append(('Bundesagentur',lambda:collect_ba_jobs(session,profiles,cfg['bundesagentur'])))
+    if cfg.get('adzuna',{}).get('enabled'):
+        collectors.append(('Adzuna',lambda:collect_adzuna(session,profiles,cfg['adzuna'])))
     if cfg.get('rss'):
         collectors.append(('RSS',lambda:collect_rss(session,cfg.get('rss',[]))))
     if cfg.get('greenhouse'):
@@ -409,13 +501,9 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
             LOG.error('%s source failed: %s',label,e);source_results.append((label,0,'error: '+str(e)[:160]))
     if not candidates: LOG.warning('No source results; leaving Sheets unchanged')
     if dry_run:
-        profile_data = json.loads(Path('config/role_profiles.json').read_text(encoding='utf-8'))
-        profiles = parse_role_rows([ROLE_HEADERS] + [[p.get(k,'') for k in ROLE_HEADERS] for p in profile_data])
         selected=filter_jobs(candidates,profiles=profiles)[:limit]
         print(json.dumps({'dry_run':True,'found':len(candidates),'eligible_for_manual_review':len(selected),'jobs':selected},ensure_ascii=False,indent=2))
         return selected
-    client=get_client()
-    profiles = read_role_profiles(client,sheet_id)
     enabled_names = [p['name'] for p in profiles if p['enabled']]
     LOG.info('Enabled search profiles: %s', enabled_names)
     urls,triples,_=read_existing(client,sheet_id)
