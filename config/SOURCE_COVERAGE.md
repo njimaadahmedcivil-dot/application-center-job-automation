@@ -3,9 +3,9 @@
 ## Tested end to end
 - **Arbeitnow public API**: authenticated GitHub -> Google Sheets write confirmed by a live run on 2026-11-11. The API uses no user key; 5 pages per run are now configured.
 
-## Enabled and awaiting next live check
-- **Berlin Startup Jobs public RSS**: the endpoint publishes a public RSS feed. Full feed parsing and job quality need production verification. If the site errors, the job is skipped and the source-health tab records the error.
-- **AECOM / SmartRecruiters**: employer jobs are publicly advertised at `jobs.smartrecruiters.com/AECOM2/`. The company API is configured; its responses need production verification. Feeds may cover international positions, so Germany filtering remains mandatory.
+## Other sources returning live data (2026-11-11)
+- **Berlin Startup Jobs public RSS:** successfully fetched 12 feed records. Employer identity in these entries needs manual verification before application.
+- **AECOM / SmartRecruiters:** successfully fetched 200 records from the configured public company board. The postings include global locations; the script filters for Germany, so source records are not necessarily relevant vacancies.
 
 ## Implemented source families, not configured with employer tokens
 - RSS/Atom
@@ -27,6 +27,7 @@ XING, StepStone, Indeed Germany, Bundesagentur für Arbeit, LinkedIn and most Ge
 - `Role_Searches`: user-defined searches, including entirely new roles, and ON/OFF controls.
 - `Source_Health`: collector group, enabled status, last checked time, count fetched, error.
 - `Site_Coverage`: full website catalog with candid per-site status.
+- `Run_History`: audit log of matches and new saves, populated by runs using the latest code.
 
 ## Source configuration example
 
