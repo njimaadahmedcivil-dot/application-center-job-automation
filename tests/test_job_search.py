@@ -153,3 +153,20 @@ class PersonioSession:
 def test_personio_mock():
     jobs=list(s.collect_personio(PersonioSession(),[{'tenant':'sample','company':'Company'}]))
     assert jobs[0]['role']=='Bauleiter' and 'Berlin' in jobs[0]['location']
+
+
+def test_run_history_appends_only_summary():
+    class HistoryClient:
+        def __init__(self): self.writes=[]
+        def post(self,url,params,json,timeout):
+            self.writes.append((url,json['values'][0]))
+            return MockResponse({'updates':{}})
+    fake=HistoryClient()
+    profiles=[{'name':'Civil engineering','enabled':True},
+              {'name':'Other','enabled':False}]
+    s.append_run_history(fake,s.SHEET_ID,120,4,3,profiles,[('Arbeitnow',120,'ok')])
+    assert len(fake.writes)==1
+    url, row=fake.writes[0]
+    assert 'Run_History' in url
+    assert row[1:4]==[120,4,3]
+    assert row[4]=='Civil engineering'
