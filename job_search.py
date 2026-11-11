@@ -339,6 +339,32 @@ def append_jobs(client,sheet_id,jobs):
     return len(rows)
 
 
+
+COLLECTOR_ORDER = ['Arbeitnow','RSS','Greenhouse','Lever','SmartRecruiters','Ashby','Recruitee','Workable','Personio']
+
+
+def update_source_health(client, sheet_id, results, cfg):
+    """Best-effort operational visibility; never overwrite application records."""
+    by_name={n:(count,status) for n,count,status in results}
+    enabled={'Arbeitnow':bool(cfg.get('arbeitnow',{}).get('enabled')),
+             **{n:bool(cfg.get(n.lower(),[])) for n in COLLECTOR_ORDER[1:]}}
+    timestamp=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y-%m-%d %H:%M')
+    rows=[['collector','enabled','last_run_berlin','records_fetched','status','detail']]
+    for name in COLLECTOR_ORDER:
+        count,status=by_name.get(name,(0,'inactive'))
+        rows.append([name,'TRUE' if enabled.get(name) else 'FALSE',
+                     timestamp if enabled.get(name) else '',
+                     count if enabled.get(name) else '',
+                     'OK' if status=='ok' else ('Inactive' if status=='inactive' else 'Error'),
+                     '' if status in ('ok','inactive') else str(status)[:160]])
+    endpoint=f'https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/Source_Health!A1:F10'
+    try:
+        r=client.put(endpoint,params={'valueInputOption':'RAW'},json={'values':rows},timeout=30)
+        r.raise_for_status()
+    except (requests.RequestException,AttributeError) as exc:
+        LOG.warning('Source_Health update unavailable: %s',exc)
+
+
 def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_ID):
     cfg=json.loads(Path(config_path).read_text(encoding='utf-8'))
     session=requests.Session()
@@ -380,6 +406,7 @@ def run(config_path='config/sources.json',dry_run=False,limit=30,sheet_id=SHEET_
     urls,triples,_=read_existing(client,sheet_id)
     selected=filter_jobs(candidates,urls,triples,profiles=profiles)[:limit]
     count=append_jobs(client,sheet_id,selected)
+    update_source_health(client,sheet_id,source_results,cfg)
     print(json.dumps({'source_records':len(candidates),'new_saved':count,'sources':[{'name':n,'records':q,'status':st} for n,q,st in source_results], 'job_titles':[x['role'] for x in selected]},ensure_ascii=False))
     return selected
 
